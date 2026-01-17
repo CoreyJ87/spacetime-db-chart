@@ -1,10 +1,11 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ include "spacetimedb.fullname" . }}
   labels:
     {{- include "spacetimedb.labels" . | nindent 4 }}
 spec:
+  serviceName: {{ include "spacetimedb.fullname" . }}
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
@@ -25,6 +26,7 @@ spec:
       serviceAccountName: {{ include "spacetimedb.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      terminationGracePeriodSeconds: 30
       {{- if and .Values.persistence.enabled (not .Values.spacetimedb.inMemory) }}
       initContainers:
       - name: remove-stale-lock
@@ -38,6 +40,8 @@ spec:
               echo "Removing stale lock file"
               rm -f {{ .Values.persistence.mountPath }}/spacetime.pid
             fi
+            echo "Waiting for any previous instance to fully terminate..."
+            sleep 5
             echo "Ready to start"
         volumeMounts:
         - name: data
@@ -77,8 +81,9 @@ spec:
                 - sh
                 - -c
                 - |
+                  echo "Shutting down gracefully..."
                   rm -f {{ .Values.persistence.mountPath }}/spacetime.pid
-                  sleep 2
+                  sleep 5
         {{- end }}
         livenessProbe:
           httpGet:
@@ -92,7 +97,7 @@ spec:
           httpGet:
             path: /v1/ping
             port: http
-          initialDelaySeconds: 5
+          initialDelaySeconds: 10
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3
@@ -117,11 +122,6 @@ spec:
           readOnly: true
         {{- end }}
       volumes:
-      {{- if and .Values.persistence.enabled (not .Values.spacetimedb.inMemory) }}
-      - name: data
-        persistentVolumeClaim:
-          claimName: {{ include "spacetimedb.fullname" . }}-data
-      {{- end }}
       {{- if .Values.jwt.enabled }}
       - name: jwt-keys
         secret:
@@ -139,3 +139,19 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+  {{- if and .Values.persistence.enabled (not .Values.spacetimedb.inMemory) }}
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+      labels:
+        {{- include "spacetimedb.labels" . | nindent 8 }}
+    spec:
+      accessModes:
+        - {{ .Values.persistence.accessMode }}
+      {{- if .Values.persistence.storageClass }}
+      storageClassName: {{ .Values.persistence.storageClass }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.persistence.size }}
+  {{- end }}

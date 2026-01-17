@@ -1,10 +1,14 @@
 # SpacetimeDB Helm Chart
 
-A Helm chart for deploying SpacetimeDB to Kubernetes.
+A Helm chart for deploying SpacetimeDB to Kubernetes using a StatefulSet for proper persistence handling.
 
 ## What is SpacetimeDB?
 
 SpacetimeDB is a database + server platform built by Clockwork Labs. It lets you write application logic (called *modules*) in WebAssembly (Rust and C# supported) and upload them so that clients connect directly to the database.
+
+## Architecture
+
+This chart deploys SpacetimeDB as a StatefulSet with persistent storage to ensure proper database lock handling and data persistence across pod restarts.
 
 ## Installation
 
