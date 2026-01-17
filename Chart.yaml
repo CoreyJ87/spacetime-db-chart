@@ -1,0 +1,6 @@
+apiVersion: v2
+name: spacetimedb
+description: A Helm chart for SpacetimeDB - a database + server platform
+type: application
+version: 0.1.0
+appVersion: "latest"

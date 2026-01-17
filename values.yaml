@@ -1,0 +1,89 @@
+replicaCount: 1
+
+image:
+  repository: clockworklabs/spacetime
+  pullPolicy: Always
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 3000
+
+resources:
+  requests:
+    memory: "512Mi"
+    cpu: "500m"
+  limits:
+    memory: "2Gi"
+    cpu: "2000m"
+
+persistence:
+  enabled: true
+  # storageClass: ""  # Use default storage class if not specified
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  mountPath: /stdb/data
+
+# SpacetimeDB configuration
+spacetimedb:
+  # Listen address inside container
+  listenAddr: "0.0.0.0:3000"
+  # Data directory path
+  dataDir: "/stdb/data"
+  # Run in memory mode (no persistence)
+  inMemory: false
+  # Max page pool size (default 8GiB, must be multiple of 64KiB)
+  pagePoolMaxSize: "8GiB"
+  # Log level
+  logLevel: "info"
+  # Disable disk logging
+  disableDiskLogging: false
+
+# JWT authentication (optional)
+jwt:
+  enabled: false
+  # If enabled, you should create a secret with private and public keys
+  # secretName: spacetimedb-jwt-keys
+  # privateKeyPath: /etc/spacetimedb/id_ecdsa
+  # publicKeyPath: /etc/spacetimedb/id_ecdsa.pub
+
+env: []
+  # - name: SPACETIME_LOG
+  #   value: "debug"
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+  # Example: Prefer worker nodes over control plane
+  # nodeAffinity:
+  #   preferredDuringSchedulingIgnoredDuringExecution:
+  #   - weight: 100
+  #     preference:
+  #       matchExpressions:
+  #       - key: node-role.kubernetes.io/control-plane
+  #         operator: DoesNotExist
