@@ -25,6 +25,27 @@ spec:
       serviceAccountName: {{ include "spacetimedb.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if and .Values.persistence.enabled (not .Values.spacetimedb.inMemory) }}
+      initContainers:
+      - name: remove-stale-lock
+        image: busybox:latest
+        command:
+          - sh
+          - -c
+          - |
+            echo "Checking for stale lock file..."
+            if [ -f {{ .Values.persistence.mountPath }}/spacetime.pid ]; then
+              echo "Removing stale lock file"
+              rm -f {{ .Values.persistence.mountPath }}/spacetime.pid
+            fi
+            echo "Ready to start"
+        volumeMounts:
+        - name: data
+          mountPath: {{ .Values.persistence.mountPath }}
+        securityContext:
+          runAsUser: 1000
+          runAsNonRoot: true
+      {{- end }}
       containers:
       - name: {{ .Chart.Name }}
         securityContext:
@@ -48,6 +69,17 @@ spec:
         - name: http
           containerPort: 3000
           protocol: TCP
+        {{- if and .Values.persistence.enabled (not .Values.spacetimedb.inMemory) }}
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - sh
+                - -c
+                - |
+                  rm -f {{ .Values.persistence.mountPath }}/spacetime.pid
+                  sleep 2
+        {{- end }}
         livenessProbe:
           httpGet:
             path: /
